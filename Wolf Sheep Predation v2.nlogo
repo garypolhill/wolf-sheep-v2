@@ -15,7 +15,7 @@ patches-own [ countdown ]    ; this is for the sheep-wolves-grass model version
 
 to setup
   clear-all
-  if fix-initialization? [ random-seed initialization-seed ]
+  if fix-setup? [ random-seed setup-seed ]
 
   ; Check model-version switch
   ; if we're not modeling grass, then the sheep don't need to eat to survive
@@ -32,26 +32,14 @@ to setup
     ask patches [ set pcolor green ]
   ]
 
-  create-sheep initial-number-sheep  ; create the sheep, then initialize their variables
-  [
-    set shape  "sheep"
-    set color white
-    set size 1.5  ; easier to see
-    set label-color blue - 2
-    set energy random (2 * sheep-gain-from-food)
-    setxy random-xcor random-ycor
-  ]
+  create-n-sheep initial-number-sheep  ; create the sheep, then initialize their variables
 
-  create-wolves initial-number-wolves  ; create the wolves, then initialize their variables
-  [
-    set shape "wolf"
-    set color black
-    set size 2  ; easier to see
-    set energy random (2 * wolf-gain-from-food)
-    setxy random-xcor random-ycor
-  ]
+  create-n-wolves initial-number-wolves  ; create the wolves, then initialize their variables
 
-  if move-one-sheep? [ ask one-of sheep [ fd 1 ] ]
+  if shift-setup-xy? [
+    let dp 10 ^ (-1 * setup-xy-dp)
+    ask turtles [ fd (random-float dp) - 0.5 * dp ]
+  ]
 
   display-labels
   set mx-sheep -1
@@ -59,7 +47,28 @@ to setup
   set mn-sheep -1
   set mn-wolves -1
   reset-ticks
-  if fix-initialization? [ random-seed new-seed ]
+  if fix-setup? [ random-seed ifelse-value fix-go? [go-seed] [new-seed] ]
+end
+
+to create-n-sheep [n]
+  create-sheep n [
+    set shape  "sheep"
+    set color white
+    set size 1.5  ; easier to see
+    set label-color blue - 2
+    set energy random (2 * sheep-gain-from-food)
+    setxy random-xcor random-ycor
+  ]
+end
+
+to create-n-wolves [n]
+  create-wolves n [
+    set shape "wolf"
+    set color black
+    set size 2  ; easier to see
+    set energy random (2 * wolf-gain-from-food)
+    setxy random-xcor random-ycor
+  ]
 end
 
 to go
@@ -85,8 +94,26 @@ to go
 
   if model-version = "sheep-wolves-grass" [ ask patches [ grow-grass ] ]
 
-  if hunt-wolves? and any? wolves [
-    ask one-of wolves [die]
+  if disturbance? and ticks = disturbance-tick [
+    (ifelse disturb-sheep < 0 [
+      if any? sheep [
+        ask up-to-n-of (abs disturb-sheep) sheep [ die ]
+      ]
+    ] disturb-sheep > 0 [
+      create-n-sheep disturb-sheep
+    ] [
+      ; Do nothing
+    ])
+
+    (ifelse disturb-wolves < 0 [
+      if any? wolves [
+        ask up-to-n-of (abs disturb-wolves) wolves [ die ]
+      ]
+    ] disturb-wolves > 0 [
+      create-n-wolves disturb-wolves
+    ] [
+      ; Do nothing
+    ])
   ]
 
   set mn-sheep ifelse-value (mn-sheep = -1) [ count sheep ] [ min (list mn-sheep count sheep) ]
@@ -428,22 +455,12 @@ model-version
 "sheep-wolves" "sheep-wolves-grass"
 0
 
-TEXTBOX
-890
-15
-1015
-45
-Additions to the Library Model
-11
-0.0
-1
-
 INPUTBOX
 885
-200
+150
 1030
-260
-initialization-seed
+210
+setup-seed
 1.23456789E8
 1
 0
@@ -451,11 +468,11 @@ Number
 
 BUTTON
 885
-265
+210
 1030
-298
-new initialization-seed
-set initialization-seed new-seed
+243
+new setup-seed
+set setup-seed new-seed
 NIL
 1
 T
@@ -468,9 +485,9 @@ NIL
 
 SLIDER
 885
-300
+480
 1030
-333
+513
 max-sheep
 max-sheep
 1000
@@ -483,47 +500,146 @@ HORIZONTAL
 
 SWITCH
 885
-50
+10
 1030
-83
-fix-initialization?
-fix-initialization?
+43
+fix-setup?
+fix-setup?
 1
 1
 -1000
 
 SWITCH
 885
-85
+80
 1030
-118
-move-one-sheep?
-move-one-sheep?
+113
+shift-setup-xy?
+shift-setup-xy?
 0
 1
 -1000
 
 SWITCH
 885
-120
+115
 1030
-153
-hunt-wolves?
-hunt-wolves?
+148
+disturbance?
+disturbance?
 0
 1
 -1000
 
 SLIDER
 885
-335
+515
 1030
-368
+548
 l10-too-many-sheep
 l10-too-many-sheep
 0
 12
-2.0
+1.0
+1
+1
+NIL
+HORIZONTAL
+
+INPUTBOX
+885
+245
+1030
+305
+go-seed
+2.3456789E8
+1
+0
+Number
+
+BUTTON
+885
+305
+1030
+338
+new go-seed
+set go-seed new-seed
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+SWITCH
+885
+45
+1030
+78
+fix-go?
+fix-go?
+1
+1
+-1000
+
+SLIDER
+885
+340
+1030
+373
+setup-xy-dp
+setup-xy-dp
+1
+10
+3.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+885
+375
+1030
+408
+disturbance-tick
+disturbance-tick
+0
+10000
+500.0
+100
+1
+NIL
+HORIZONTAL
+
+SLIDER
+885
+410
+1030
+443
+disturb-sheep
+disturb-sheep
+-100
+100
+0.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+885
+445
+1030
+478
+disturb-wolves
+disturb-wolves
+-100
+100
+0.0
 1
 1
 NIL
@@ -957,7 +1073,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.3.0
+NetLogo 6.4.0
 @#$#@#$#@
 set model-version "sheep-wolves-grass"
 set show-energy? false
@@ -966,7 +1082,7 @@ repeat 75 [ go ]
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="same-initial-conditions" repetitions="1000" runMetricsEveryStep="false">
+  <experiment name="fix-setup" repetitions="1000" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
     <timeLimit steps="1000000"/>
@@ -979,29 +1095,17 @@ or (count wolves = 0 and count sheep &gt; max-sheep)</exitCondition>
     <metric>mx-sheep</metric>
     <metric>mn-wolves</metric>
     <metric>mx-wolves</metric>
-    <metric>ticks</metric>
     <enumeratedValueSet variable="wolf-gain-from-food">
       <value value="20"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="fix-initialization?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="move-one-sheep?">
+    <enumeratedValueSet variable="disturbance?">
       <value value="false"/>
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="hunt-wolves?">
-      <value value="false"/>
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="l10-too-many-sheep">
-      <value value="7"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="initialization-seed">
-      <value value="123456789"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="show-energy?">
       <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="disturb-wolves">
+      <value value="0"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="wolf-reproduce">
       <value value="5"/>
@@ -1012,23 +1116,50 @@ or (count wolves = 0 and count sheep &gt; max-sheep)</exitCondition>
     <enumeratedValueSet variable="initial-number-sheep">
       <value value="100"/>
     </enumeratedValueSet>
+    <enumeratedValueSet variable="setup-seed">
+      <value value="123456789"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="disturbance-tick">
+      <value value="500"/>
+    </enumeratedValueSet>
     <enumeratedValueSet variable="model-version">
       <value value="&quot;sheep-wolves&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="sheep-gain-from-food">
       <value value="4"/>
     </enumeratedValueSet>
+    <enumeratedValueSet variable="setup-xy-dp">
+      <value value="3"/>
+    </enumeratedValueSet>
     <enumeratedValueSet variable="grass-regrowth-time">
       <value value="30"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="max-sheep">
       <value value="50000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fix-go?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="shift-setup-xy?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fix-setup?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="l10-too-many-sheep">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="disturb-sheep">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="go-seed">
+      <value value="234567890"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="sheep-reproduce">
       <value value="4"/>
     </enumeratedValueSet>
   </experiment>
-  <experiment name="diff-initial-conditions" repetitions="1000" runMetricsEveryStep="false">
+  <experiment name="control" repetitions="1000" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
     <timeLimit steps="1000000"/>
@@ -1041,29 +1172,17 @@ or (count wolves = 0 and count sheep &gt; max-sheep)</exitCondition>
     <metric>mx-sheep</metric>
     <metric>mn-wolves</metric>
     <metric>mx-wolves</metric>
-    <metric>ticks</metric>
     <enumeratedValueSet variable="wolf-gain-from-food">
       <value value="20"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="fix-initialization?">
+    <enumeratedValueSet variable="disturbance?">
       <value value="false"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="move-one-sheep?">
-      <value value="false"/>
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="hunt-wolves?">
-      <value value="false"/>
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="l10-too-many-sheep">
-      <value value="7"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="initialization-seed">
-      <value value="123456789"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="show-energy?">
       <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="disturb-wolves">
+      <value value="0"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="wolf-reproduce">
       <value value="5"/>
@@ -1074,17 +1193,208 @@ or (count wolves = 0 and count sheep &gt; max-sheep)</exitCondition>
     <enumeratedValueSet variable="initial-number-sheep">
       <value value="100"/>
     </enumeratedValueSet>
+    <enumeratedValueSet variable="setup-seed">
+      <value value="123456789"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="disturbance-tick">
+      <value value="500"/>
+    </enumeratedValueSet>
     <enumeratedValueSet variable="model-version">
       <value value="&quot;sheep-wolves&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="sheep-gain-from-food">
       <value value="4"/>
     </enumeratedValueSet>
+    <enumeratedValueSet variable="setup-xy-dp">
+      <value value="3"/>
+    </enumeratedValueSet>
     <enumeratedValueSet variable="grass-regrowth-time">
       <value value="30"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="max-sheep">
       <value value="50000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fix-go?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="shift-setup-xy?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fix-setup?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="l10-too-many-sheep">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="disturb-sheep">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="go-seed">
+      <value value="234567890"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="sheep-reproduce">
+      <value value="4"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="shift-setup-xy" repetitions="1000" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="1000000"/>
+    <exitCondition>count sheep = 0 
+or (log (count sheep) 10) &gt; l10-too-many-sheep 
+or (count wolves = 0 and count sheep &gt; max-sheep)</exitCondition>
+    <metric>count sheep</metric>
+    <metric>count wolves</metric>
+    <metric>mn-sheep</metric>
+    <metric>mx-sheep</metric>
+    <metric>mn-wolves</metric>
+    <metric>mx-wolves</metric>
+    <enumeratedValueSet variable="wolf-gain-from-food">
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="disturbance?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-energy?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="disturb-wolves">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="wolf-reproduce">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-number-wolves">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-number-sheep">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="setup-seed">
+      <value value="123456789"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="disturbance-tick">
+      <value value="500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="model-version">
+      <value value="&quot;sheep-wolves&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="sheep-gain-from-food">
+      <value value="4"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="setup-xy-dp">
+      <value value="3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="grass-regrowth-time">
+      <value value="30"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-sheep">
+      <value value="50000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fix-go?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="shift-setup-xy?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fix-setup?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="l10-too-many-sheep">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="disturb-sheep">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="go-seed">
+      <value value="234567890"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="sheep-reproduce">
+      <value value="4"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="disturbance" repetitions="100" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="1000000"/>
+    <exitCondition>count sheep = 0 
+or (log (count sheep) 10) &gt; l10-too-many-sheep 
+or (count wolves = 0 and count sheep &gt; max-sheep)</exitCondition>
+    <metric>count sheep</metric>
+    <metric>count wolves</metric>
+    <metric>mn-sheep</metric>
+    <metric>mx-sheep</metric>
+    <metric>mn-wolves</metric>
+    <metric>mx-wolves</metric>
+    <enumeratedValueSet variable="wolf-gain-from-food">
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="disturbance?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="show-energy?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="disturb-wolves">
+      <value value="-20"/>
+      <value value="-10"/>
+      <value value="0"/>
+      <value value="10"/>
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="wolf-reproduce">
+      <value value="5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-number-wolves">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-number-sheep">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="setup-seed">
+      <value value="123456789"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="disturbance-tick">
+      <value value="100"/>
+      <value value="200"/>
+      <value value="500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="model-version">
+      <value value="&quot;sheep-wolves&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="sheep-gain-from-food">
+      <value value="4"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="setup-xy-dp">
+      <value value="3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="grass-regrowth-time">
+      <value value="30"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-sheep">
+      <value value="50000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fix-go?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="shift-setup-xy?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="fix-setup?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="l10-too-many-sheep">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="disturb-sheep">
+      <value value="-20"/>
+      <value value="-10"/>
+      <value value="0"/>
+      <value value="10"/>
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="go-seed">
+      <value value="234567890"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="sheep-reproduce">
       <value value="4"/>
