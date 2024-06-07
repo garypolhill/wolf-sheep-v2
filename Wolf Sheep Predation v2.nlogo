@@ -1082,7 +1082,7 @@ repeat 75 [ go ]
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="fix-setup" repetitions="1000" runMetricsEveryStep="false">
+  <experiment name="fix-setup" repetitions="1000" runMetricsEveryStep="true">
     <setup>setup</setup>
     <go>go</go>
     <timeLimit steps="1000000"/>
@@ -1159,7 +1159,7 @@ or (count wolves = 0 and count sheep &gt; max-sheep)</exitCondition>
       <value value="4"/>
     </enumeratedValueSet>
   </experiment>
-  <experiment name="control" repetitions="1000" runMetricsEveryStep="false">
+  <experiment name="control" repetitions="1000" runMetricsEveryStep="true">
     <setup>setup</setup>
     <go>go</go>
     <timeLimit steps="1000000"/>
@@ -1236,7 +1236,7 @@ or (count wolves = 0 and count sheep &gt; max-sheep)</exitCondition>
       <value value="4"/>
     </enumeratedValueSet>
   </experiment>
-  <experiment name="shift-setup-xy" repetitions="1000" runMetricsEveryStep="false">
+  <experiment name="shift-setup-xy" repetitions="1000" runMetricsEveryStep="true">
     <setup>setup</setup>
     <go>go</go>
     <timeLimit steps="1000000"/>
@@ -1313,7 +1313,7 @@ or (count wolves = 0 and count sheep &gt; max-sheep)</exitCondition>
       <value value="4"/>
     </enumeratedValueSet>
   </experiment>
-  <experiment name="disturbance" repetitions="100" runMetricsEveryStep="false">
+  <experiment name="disturbance" repetitions="100" runMetricsEveryStep="true">
     <setup>setup</setup>
     <go>go</go>
     <timeLimit steps="1000000"/>
