@@ -540,7 +540,7 @@ l10-too-many-sheep
 l10-too-many-sheep
 0
 12
-1.0
+7.0
 1
 1
 NIL
@@ -1147,7 +1147,7 @@ or (count wolves = 0 and count sheep &gt; max-sheep)</exitCondition>
       <value value="true"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="l10-too-many-sheep">
-      <value value="1"/>
+      <value value="7"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="disturb-sheep">
       <value value="0"/>
@@ -1224,7 +1224,7 @@ or (count wolves = 0 and count sheep &gt; max-sheep)</exitCondition>
       <value value="false"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="l10-too-many-sheep">
-      <value value="1"/>
+      <value value="7"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="disturb-sheep">
       <value value="0"/>
@@ -1301,7 +1301,7 @@ or (count wolves = 0 and count sheep &gt; max-sheep)</exitCondition>
       <value value="true"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="l10-too-many-sheep">
-      <value value="1"/>
+      <value value="7"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="disturb-sheep">
       <value value="0"/>
@@ -1384,7 +1384,7 @@ or (count wolves = 0 and count sheep &gt; max-sheep)</exitCondition>
       <value value="true"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="l10-too-many-sheep">
-      <value value="1"/>
+      <value value="7"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="disturb-sheep">
       <value value="-20"/>
