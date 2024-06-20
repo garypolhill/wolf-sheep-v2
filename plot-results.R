@@ -291,9 +291,48 @@ for(s in 1:level.steps) {
 # and gather data for the other plots
 
 pdf(pdf.file)
+par(mai = par()$mai * c(1, 1.4, 1, 1))
+
+# plot.trajectory
+#
+# Function to make a trajectory plot of the wolf and sheep populations. It also
+# gathers data on the plots for use in subsequent (level and summary) plots, and
+# creates a palette.
+#
+# Inputs:
+#
+# traj.files: a vector of CSV files output from NetLogo's BehaviorSpace, each
+#    containing one run of population trajectory data. If the files are in
+#    different directories, a comparison plot is assumed, and the palette
+#    for the plots constructed differently.
+# traj.name: a name to put at the top of the trajectory plot
+# traj.maximua: a list with one entry for $sheep, and another for $wolves 
+#    used to determine the axes for the trajectories
+# level.maxima: a list with one entry for $sheep, and another for $wolves,
+#    each of which is a vector containing the sheep and wolve population values
+#    that are going to be plotted in the level plot
+# level.stop: time step at which to stop doing a level plot
+# traj.stop: time step at which to stop the trajectory plots
+# filter: list of field-value pairs used to determine equality
+#
+# Returns a list with the following elements:
+#
+# $`extinctions`: list with elements $both, $wolves, $sheep, $neither counting
+#    how many times each kind of extinction took place.
+# $`extinct.steps`: in runs in which there was an extinction, the time step at
+#    which the extinction occurred
+# $`sheep.pops`: in runs in which the sheep did not go extinct, the population
+#    of sheep at termination
+# $`wolf.pops`: as per sheep.pops but for wolves
+# $`pop.levels`: data frame with columns for sheep and wolf populations and 
+#    `stepX` (X being the timestep) counting the number of times the sheep and
+#    wolf entry combination occurred across all runs 
+# $`max.level`: maximum entry in any pop.levels$stepX column
+# $`palette`: palette used to plot trajectories for each directory
 
 plot.trajectory <- function(traj.files, traj.name, traj.maxima, level.maxima, level.stop,
-    traj.stop = NULL, filter = NULL) {
+    traj.stop = NULL, filter = NULL, traj.alpha = 0.1, end.alpha = 0.6, title.size = 2,
+    axis.title.size = 1.5, axis.label.size = 1, legend.size = 1.5, end.points = TRUE) {
     # Set up counters for different terminating conditions and populations
     # These only make sense if max.step is NULL
     extinctions <- list(`Both` = 0, `Wolves` = 0, `Sheep` = 0, `Neither` = 0)
@@ -307,30 +346,34 @@ plot.trajectory <- function(traj.files, traj.name, traj.maxima, level.maxima, le
         pop.levels[, step] = rep(0, nrow(pop.levels))
     }
 
-    if(log.xy) {
-        plot(NULL, xlim = c(1, traj.maxima$sheep), ylim = c(1, traj.maxima$wolves), main = traj.name,
-            xlab = "Sheep Population", ylab = "Wolf Population", log = "xy")
-    } else {
-        plot(NULL, xlim = c(0, traj.maxima$sheep), ylim = c(0, traj.maxima$wolves), main = traj.name,
-            xlab = "Sheep Population", ylab = "Wolf Population")
-    }
-
     n.traj <- length(traj.files)
     traj.all.dirs <- unlist(lapply(strsplit(traj.files, "/"), head, n = 1))
     traj.dirs <- unique(traj.all.dirs)
-    clrs <- rainbow(n.traj, s = 0.8, v = 0.5, alpha = 0.2, start = 0, end = 1)
-    pclr <- rainbow(n.traj, s = 0.8, v = 0.5, alpha = 0.8, start = 0, end = 1)
+    clrs <- rainbow(n.traj, s = 0.8, v = 0.5, alpha = traj.alpha, start = 0, end = 1)
+    pclr <- rainbow(n.traj, s = 0.8, v = 0.5, alpha = end.alpha, start = 0, end = 1)
     dirpal <- list()
     if(length(traj.dirs) > 1) {
         rbow.frac <- length(traj.dirs) / (length(traj.dirs) + 1)
-        clrs <- rainbow(length(traj.dirs), s = 0.8, v = 0.5, alpha = 0.2, start = 0, end = rbow.frac)
-        pclr <- rainbow(length(traj.dirs), s = 0.8, v = 0.5, alpha = 0.8, start = 0, end = rbow.frac)
+        clrs <- rainbow(length(traj.dirs), s = 0.8, v = 0.5, alpha = traj.alpha, start = 0, end = rbow.frac)
+        pclr <- rainbow(length(traj.dirs), s = 0.8, v = 0.5, alpha = end.alpha, start = 0, end = rbow.frac)
         for(i in 1:length(traj.dirs)) {
             dirpal[[traj.dirs[i]]] <- pclr[i]
         }
+        traj.name = paste(traj.dirs, collapse = " vs. ")
     } else {
         dirpal[[traj.dirs[1]]] = rgb(0.5, 0.5, 0.5, alpha = 0.8)
     }
+
+    if(log.xy) {
+        plot(NULL, xlim = c(1, traj.maxima$sheep), ylim = c(1, traj.maxima$wolves), main = traj.name,
+            xlab = "Sheep Population", ylab = "Wolf Population", log = "xy", cex.main = title.size,
+            cex.axis = axis.label.size, cex.lab = axis.title.size)
+    } else {
+        plot(NULL, xlim = c(0, traj.maxima$sheep), ylim = c(0, traj.maxima$wolves), main = traj.name,
+            xlab = "Sheep Population", ylab = "Wolf Population", cex.main = title.size,
+            cex.axis = axis.label.size, cex.lab = axis.title.size)
+    }
+
     for(i in 1:n.traj) {
         file <- traj.files[i]
 
@@ -362,8 +405,9 @@ plot.trajectory <- function(traj.files, traj.name, traj.maxima, level.maxima, le
 
         n <- nrow(df)
 
-        # Plot the trajectory
+        # Plot the trajectory and capture summary data about the run
         if(n > 0) {
+            # Determine end point type based on extinctions
             end.pch <- 1
             if(df$`count sheep`[n] > 0 && df$`count wolves`[n] > 0) {
                 end.pch <- 8
@@ -382,20 +426,29 @@ plot.trajectory <- function(traj.files, traj.name, traj.maxima, level.maxima, le
                 extinctions$`Both` <- extinctions$`Both` + 1
                 extinct.steps <- c(extinct.steps, max(df$`[step]`))
             }
+
+            # If plotting with log axes, need to go back to the first time step
+            # at which both populations at at least one member
             if(log.xy) {
                 while((df$`count sheep`[n] == 0 || df$`count wolves`[n] == 0) && n > 0) {
                     n <- n - 1
                 }
             }
+
+            # Plot the trajectory line and start point in black with a white border
             lines(c(df$`count sheep`[1:n]), c(df$`count wolves`[1:n]), col = l.clr)
+            points(df$`count sheep`[1], df$`count wolves`[1], col = "white", pch = 16, cex = 1.1)
             points(df$`count sheep`[1], df$`count wolves`[1], col = "black", pch = 16)
-            if(plot.end) {
+
+            # Plot the end point if required
+            if(end.points) {
                 points(df$`count sheep`[n], df$`count wolves`[n], col = p.clr, pch = end.pch)
                 if(end.pch != 1) {
                     points(df$`count sheep`[n], df$`count wolves`[n], col = p.clr, pch = 0)
                 }
             }
             
+            # Capture data for the level plots
             for(s in 1:level.stop) {
                 step <- paste0("step", s)
                 step.row <- which(df$`[step]` == s)
@@ -415,6 +468,11 @@ plot.trajectory <- function(traj.files, traj.name, traj.maxima, level.maxima, le
             }
         }
     }
+
+    if(length(traj.dirs) > 1) {
+        legend("topright", legend = names(dirpal), lty = "solid", col = unlist(dirpal),
+            bg = "white", cex = legend.size)
+    }
     return(list(`extinctions` = extinctions,
         `extinct.steps` = extinct.steps,
         `sheep.pops` = sheep.pops,
@@ -425,13 +483,49 @@ plot.trajectory <- function(traj.files, traj.name, traj.maxima, level.maxima, le
     ))
 }
 
+# plot.levels
+#
+# Make a level plot of one-three directories' run data, X axis is number of
+# sheep; Y axis is number of wolves; colour to plot as a rectangle for each
+# X, Y depends on the number of times a run in one (or more) directories
+# had that value for the population at the given time step.
+#
+# Inputs:
+#
+# level.data: List of pop.levels dataframes returned from plot.trajectory,
+#    labelled by the name of the directory. Maximum of three entries
+# sheep.axis: Vector with element [1] at minimum, element [2] at maximum sheep
+#    popultion to plot
+# wolf.axis: As per sheep.axis, but for wolves
+# n.steps: Number of steps expected in the level.data pop.levels dataframes
+# level.max: Maximum level to plot. Above this level, all entries have the
+#    same value
+# grey.start, grey.end, grey.gamma, grey.alpha: arguments to what would be
+#    a call to grey.colors() library function to determine the RGB values
+#    corresponding to a level in the range [1, level.max] 
+# rgb.others: RGB value to use for other directories when this one has a 
+#    value and the others do not
+# title.size: Character expansion for the title
+# axis.title.size: Character expansion for the axis title
+# axis.label.size: Character expansion for the axis labels
+# legend.size: Character expansion for the legend
+#
+# Returns:
+# (void)
+
 plot.levels <- function(level.data, sheep.axis, wolf.axis, n.steps, level.max,
-    grey.start = 0.3, grey.end = 0.9, grey.gamma = 2.2, grey.alpha = 1, rgb.others = 0) {
+    grey.start = 0.3, grey.end = 0.9, grey.gamma = 2.2, grey.alpha = 1,
+    rgb.others = 0, title.size = 2, axis.title.size = 1.5, axis.label.size = 1,
+    legend.size = 1.5) {
+
+    # Check the number of plots to do -- since we are using RGB values
+    # three is the maximum
     n.plots <- length(level.data)
     if(n.plots > 3) {
         stop("Too many simultaneous level plots (", n.plots, ") -- maximum is 3", call. = FALSE)
     }
 
+    # Create a palette for these plots
     grey.values <- rev(seq(grey.start^grey.gamma, grey.end^grey.gamma,
         length = level.max)^(1 / grey.gamma)) # From grey.colors() help in R
 
@@ -441,24 +535,31 @@ plot.levels <- function(level.data, sheep.axis, wolf.axis, n.steps, level.max,
         rgb.val[i] <- grey.end
         if(i == n.plots && n.plots < 3) {
             for(k in (i + 1):3) {
-                rgb.val[i] <- grey.end
+                rgb.val[k] <- grey.end
             }
         }
         fill.clr[i] <- rgb(rgb.val[1], rgb.val[2], rgb.val[3], alpha = grey.alpha)
     }
+
+    # Do the plots
 
     x.size <- 1 + sheep.axis[2] - sheep.axis[1]
     y.size <- 1 + wolf.axis[2] - wolf.axis[1]
     rgb.plot <- array(NA, dim = c(x.size, y.size, 3))
 
     for(s in 1:n.steps) {
+        # One level plot per step
+
         step <- paste0("step", s)
 
         plot(NULL, xlim = c(sheep.axis[1] - 0.5, sheep.axis[2] + 0.5),
             ylim = c(wolf.axis[1] - 0.5, wolf.axis[2] + 0.5),
             xlab = "Sheep Population", ylab = "Wolf Population",
-            main = paste0("Step ", s))
+            main = paste0("Step ", s), cex.main = title.size,
+            cex.axis = axis.label.size, cex.lab = axis.title.size)
 
+        # Build the rgb.plot data from the 1-3 (n.plots) directories
+        # from which runs are taken.
         for(j in 1:n.plots) {
             pop <- level.data[[j]]$pop.levels
             for(i in 1:nrow(pop)) {
@@ -483,6 +584,8 @@ plot.levels <- function(level.data, sheep.axis, wolf.axis, n.steps, level.max,
             }
         }
 
+        # Now plot a rectangle in each location corresponding to the RGB value
+        # chosen
         for(x in sheep.axis[1]:sheep.axis[2]) {
             for(y in wolf.axis[1]:wolf.axis[2]) {
                 r <- rgb.plot[1 + x - sheep.axis[1], 1 + y - wolf.axis[1], 1]
@@ -499,14 +602,99 @@ plot.levels <- function(level.data, sheep.axis, wolf.axis, n.steps, level.max,
         }
 
         if(n.plots > 1) {
-            legend("top", legend = names(level.data), fill = fill.clr, bg = "white",
-                border = fill.clr)
+            legend("topright", legend = names(level.data), fill = fill.clr, bg = "white",
+                border = fill.clr, cex = legend.size)
         }
 
     }
 }
 
-plot.summary <- function(cmp.list, palette = unlist(cmp.list[[1]]$palette), logxy = TRUE) {
+# plot.alpha.levels
+#
+# Alternative to plot.levels that uses the alpha channel to reflect the
+# level rather than RGB. Theoretically allows as many comparisons as you
+# like, but could get messy.
+
+plot.alpha.levels <- function(level.data, sheep.axis, wolf.axis, n.steps,
+    level.max, palette, alpha.start = 0.3, alpha.end = 0.7, title.size = 2,
+    axis.title.size = 1.5, axis.label.size = 1, legend.size = 1.5) {
+
+    # Build palettes for each directory using the given palette
+    level.palette <- list()
+    alphas <- rev(alpha.start + (alpha.end - alpha.start) / (1:level.max))
+    for(name in names(level.data)) {
+        if(is.null(palette[[name]])) {
+            stop("BUG! No palette for name ", name)
+        }
+        clr <- col2rgb(palette[[name]]) / 255
+        level.palette[[name]] <- rgb(clr[1], clr[2], clr[3], alpha = alphas)
+    }
+
+    # Do the plots
+
+    for(s in 1:n.steps) {
+        # One level plot per step
+
+        step <- paste0("step", s)
+
+        plot(NULL, xlim = c(sheep.axis[1] - 0.5, sheep.axis[2] + 0.5),
+            ylim = c(wolf.axis[1] - 0.5, wolf.axis[2] + 0.5),
+            xlab = "Sheep Population", ylab = "Wolf Population",
+            main = paste0("Step ", s), cex.main = title.size,
+            cex.axis = axis.label.size, cex.lab = axis.title.size)
+
+        for(name in names(level.data)) {
+            pop <- level.data[[name]]$pop.levels
+
+            for(i in 1:nrow(pop)) {
+                n <- pop[i, step]
+                if(n > level.max) {
+                    n <- level.max
+                }
+
+                if(n > 0) {
+                    x <- pop$sheep[i]
+                    y <- pop$wolves[i]
+
+                    if(x >= sheep.axis[1] && x <= sheep.axis[2]
+                        && y >= wolf.axis[1] && y <= wolf.axis[2]) {
+                        
+                        clr <- level.palette[[name]]
+                        rect(x - 0.5, y - 0.5, x + 0.5, y + 0.5, col = clr[n], border = NA)
+                    }
+                }
+            }
+        }
+
+        if(length(level.data) > 1) {
+            legend("topright", legend = names(palette), fill = unlist(palette),
+                bg = "white", border = unlist(palette), cex = legend.size)
+        }
+
+    }
+}
+
+# plot.summary
+#
+# Function to plot summary data from the runs, possibly comparing two more
+# more runs side-by-side.
+#
+# Inputs:
+#
+# cmp.list: list of return values from plot.trajectory(), named by directory
+# palette: vector of colours to use for each directory, in order of cmp.list
+# logxy: Use log axes for the wolf and sheep populations at extinction plots
+# title.size: Character expansion for plot titles
+# axis.title.size: Character expansion for plot axis titles
+# axis.label.size: Character expansion for plot axis labels
+# legend.size: Character expansion for legend entries
+#
+# Returns:
+# (void)
+
+plot.summary <- function(cmp.list, palette = unlist(cmp.list[[1]]$palette),
+    logxy = TRUE, title.size = 2, axis.title.size = 1.5, axis.label.size = 1,
+    legend.size = 1.5) {
 
     # Extinctions barplot and preparations needed to get axes limits
     extinctions <- matrix(nrow = length(cmp.list), ncol = length(cmp.list[[1]]$extinctions))
@@ -577,18 +765,21 @@ plot.summary <- function(cmp.list, palette = unlist(cmp.list[[1]]$palette), logx
     }
     barplot(extinctions, names.arg = names(cmp.list[[1]]$extinctions),
         main = NULL, ylab = "Numbers of runs", xlab = "Extinctions",
-        beside = (length(cmp.list) > 1), col = palette,
-        legend.text = names(cmp.list))
+        beside = (length(cmp.list) > 1), border = NA, col = palette,
+        legend.text = names(cmp.list), cex.main = title.size,
+        cex.axis = axis.label.size, cex.lab = axis.title.size,
+        args.legend = list(cex = legend.size))
 
     # Extinction step histogram
     for(i in 1:length(cmp.list)) {
         add.plot <- (i > 1)
         hist(cmp.list[[i]]$extinct.steps, ylab = "Numbers of runs", xlab = "Extinction Step",
             add = add.plot, col = palette[i], border = FALSE, xlim = c(0, max.extinct.step),
-            ylim = c(0, max.extinct.count), main = "")
+            ylim = c(0, max.extinct.count), main = "",
+            cex.axis = axis.label.size, cex.lab = axis.title.size)
     }
     legend("topright", legend = names(cmp.list), fill = palette, border = palette,
-        bg = "white")
+        bg = "white", cex = legend.size)
 
     # Wolf/Sheep populations at extinction histograms
     if(logxy) {
@@ -596,39 +787,43 @@ plot.summary <- function(cmp.list, palette = unlist(cmp.list[[1]]$palette), logx
             add.plot <- (i > 1)
             hist(log10(cmp.list[[i]]$sheep.pops), ylab = "Numbers of runs",
                 add = add.plot, col = palette[i], border = FALSE, main = "",
+                cex.axis = axis.label.size, cex.lab = axis.title.size,
                 xlim = c(min.sheep.pop, max.sheep.pop), ylim = c(0, max.sheep.count),
                 xlab = "Log(Sheep Population) at Wolf Extinction")
         }
         legend("topright", legend = names(cmp.list), fill = palette, border = palette,
-            bg = "white")
+            bg = "white", cex = legend.size)
         for(i in 1:length(cmp.list)) {
             add.plot <- (i > 1)
             hist(log10(cmp.list[[i]]$wolf.pops), ylab = "Numbers of runs",
                 add = add.plot, col = palette[i], border = FALSE, main = "",
+                cex.axis = axis.label.size, cex.lab = axis.title.size,
                 xlim = c(min.wolf.pop, max.wolf.pop), ylim = c(0, max.wolf.count),
                 xlab = "Log(Wolf Population) at Sheep Extinction")
         }
         legend("topright", legend = names(cmp.list), fill = palette, border = palette,
-            bg = "white")
+            bg = "white", cex = legend.size)
     } else {
         for(i in 1:length(cmp.list)) {
             add.plot <- (i > 1)
             hist(cmp.list[[i]]$sheep.pops, ylab = "Numbers of runs",
                 add = add.plot, col = palette[i], border = FALSE, main = "",
+                cex.axis = axis.label.size, cex.lab = axis.title.size,
                 xlim = c(min.sheep.pop, max.sheep.pop), ylim = c(0, max.sheep.count),
                 xlab = "Sheep Population at Wolf Extinction")
         }
         legend("topright", legend = names(cmp.list), fill = palette, border = palette,
-            bg = "white")
+            bg = "white", cex = legend.size)
         for(i in 1:length(cmp.list)) {
             add.plot <- (i > 1)
             hist(cmp.list[[i]]$wolf.pops, ylab = "Numbers of runs",
                 add = add.plot, col = palette[i], border = FALSE, main = "",
+                cex.axis = axis.label.size, cex.lab = axis.title.size,
                 xlim = c(min.wolf.pop, max.wolf.pop), ylim = c(0, max.wolf.count),
                 xlab = "Wolf Population at Sheep Extinction")
         }
         legend("topright", legend = names(cmp.list), fill = palette, border = palette,
-            bg = "white")
+            bg = "white", cex = legend.size)
     }
 }
 
@@ -653,16 +848,25 @@ if(length(cmp.files) > 0) {
     for(i in 1:length(cmp.files)) {
         cmp.name <- names(cmp.files)[i]
         cmp.data <- plot.trajectory(cmp.files[[i]], cmp.name,
-        list(`sheep` = max.sheep, `wolves` = max.wolves),
-        list(`sheep` = sheep.levels, `wolves` = wolf.levels), level.steps, traj.stop = max.step)
+            list(`sheep` = max.sheep, `wolves` = max.wolves),
+            list(`sheep` = sheep.levels, `wolves` = wolf.levels),
+            level.steps, traj.stop = max.step)
         run.list[[cmp.name]] <- cmp.data
     }
     all.data <- plot.trajectory(all.files, "Trajectory Comparison",
         list(`sheep` = max.sheep, `wolves` = max.wolves),
-        list(`sheep` = sheep.levels, `wolves` = wolf.levels), level.steps, traj.stop = max.step)
+        list(`sheep` = sheep.levels, `wolves` = wolf.levels), level.steps,
+        traj.stop = max.step)
+    logbook("Trajectory comparison plot complete")
     plot.levels(run.list, c(min.sheep.level, max.sheep.level),
-        c(min.wolves.level, max.wolves.level), level.steps, run.data$max.level)
+        c(min.wolves.level, max.wolves.level), level.steps, all.data$max.level)
+    logbook("Level comparison plot complete")
+    plot.alpha.levels(run.list, c(min.sheep.level, max.sheep.level),
+        c(min.wolves.level, max.wolves.level), level.steps, all.data$max.level,
+        all.data$palette)
+    logbook("Alpha-based level comparison plot complete")
     plot.summary(run.list, logxy = log.xy, palette = unlist(all.data$palette))
+    logbook("Summary comparison plot complete")
 }
 
 dev.off()
