@@ -4,9 +4,9 @@ An updated version of the canonical [NetLogo Wolf Sheep Predation](http://ccl.no
 Some very minor changes have been introduced to Wilensky's code to do the following:
 
   + Enable a fixed seed to be used during initialization and an arbitrary seed thereafter;
-  + Enable one sheep to move after all sheep and wolves have been created;
-  + Enable one wolf to be killed each tick by a 'hunter'.
+  + Shift the positions of all the sheep and wolves by a very small amount after setup;
+  + Introduce a 'disturbance' to the population of sheep and wolves (adding or removing a specific number of them at a specific time).
 
-The model also keeps track of the maximum numbers of sheep and wolves, and contains two BehaviorSpace experiments that explore the above options. To do this without causing memory to run out if the sheep population takes off while there are still wolves, an absolute maximum on the number of sheep has also been introduced.
+The model also keeps track of the maximum numbers of sheep and wolves, and contains BehaviorSpace experiments that explore the above options. To do this without causing memory to run out if the sheep population takes off while there are still wolves, an absolute maximum on the number of sheep has also been introduced.
 
-The purpose of these changes is to allow exploration of the extent of the variation in outcomes arising from the same initial conditions.
+The purpose of these changes is to allow exploration of the extent of the variation in outcomes arising from the same (or similar) initial conditions.
